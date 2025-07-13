@@ -16,7 +16,7 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden; /* Prevent scrolling */
+            /* Removed overflow: hidden to ensure all content is potentially visible */
         }
         canvas {
             background-color: #e2e8f0; /* Light gray for the city ground */
@@ -86,8 +86,7 @@
             <span>Time: <span id="time">60</span>s</span>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <!-- Temporary: Added background and border for debugging button visibility -->
-        <div class="flex gap-4 mt-4 bg-green-200 border-2 border-red-500 p-2 rounded-lg">
+        <div class="flex gap-4 mt-4">
             <button id="startButton" class="game-button btn-primary" style="display: block;">Start Game</button>
             <button id="restartButton" class="game-button btn-secondary" style="display: none;">Restart Game</button>
         </div>
