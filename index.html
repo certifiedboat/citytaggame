@@ -37,6 +37,7 @@
             background-color: #ffffff; /* White background for the container */
             border-radius: 1.5rem; /* More rounded corners */
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            min-height: 500px; /* Ensure enough vertical space for all elements */
         }
         .game-button {
             padding: 0.75rem 1.5rem;
@@ -85,8 +86,8 @@
             <span>Time: <span id="time">60</span>s</span>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div class="flex gap-4 mt-4">
-            <!-- Ensure startButton is visible by default -->
+        <!-- Temporary: Added background and border for debugging button visibility -->
+        <div class="flex gap-4 mt-4 bg-green-200 border-2 border-red-500 p-2 rounded-lg">
             <button id="startButton" class="game-button btn-primary" style="display: block;">Start Game</button>
             <button id="restartButton" class="game-button btn-secondary" style="display: none;">Restart Game</button>
         </div>
@@ -203,8 +204,7 @@
 
             scoreDisplay.textContent = score;
             timeDisplay.textContent = timeLeft;
-            // Ensure the start button is visible when initializing the game (redundant due to inline style, but good for clarity)
-            startButton.style.display = 'block';
+            startButton.style.display = 'block'; // Ensure it's visible
             restartButton.style.display = 'none';
             hideMessageBox();
 
@@ -399,14 +399,9 @@
 
         // Initial setup on window load
         window.onload = function() {
-            // First, resize the canvas to fit the screen
-            resizeCanvas();
-            // Then, initialize the game state, which includes making the start button visible
-            initializeGame();
-            // Draw the initial game elements
-            draw();
-            // Log the display style of the start button to the console for debugging
-            console.log('Start Button display style after initialization:', startButton.style.display);
+            resizeCanvas(); // Set initial canvas size
+            initializeGame(); // Initialize game state
+            draw(); // Draw initial state
         };
 
         // Listen for window resize events
