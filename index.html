@@ -86,7 +86,8 @@
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div class="flex gap-4 mt-4">
-            <button id="startButton" class="game-button btn-primary">Start Game</button>
+            <!-- Ensure startButton is visible by default -->
+            <button id="startButton" class="game-button btn-primary" style="display: block;">Start Game</button>
             <button id="restartButton" class="game-button btn-secondary" style="display: none;">Restart Game</button>
         </div>
         <div id="messageBox" class="message-box"></div>
@@ -202,6 +203,7 @@
 
             scoreDisplay.textContent = score;
             timeDisplay.textContent = timeLeft;
+            // Ensure the start button is visible when initializing the game (redundant due to inline style, but good for clarity)
             startButton.style.display = 'block';
             restartButton.style.display = 'none';
             hideMessageBox();
@@ -397,9 +399,14 @@
 
         // Initial setup on window load
         window.onload = function() {
-            resizeCanvas(); // Set initial canvas size
-            initializeGame(); // Initialize game state
-            draw(); // Draw initial state
+            // First, resize the canvas to fit the screen
+            resizeCanvas();
+            // Then, initialize the game state, which includes making the start button visible
+            initializeGame();
+            // Draw the initial game elements
+            draw();
+            // Log the display style of the start button to the console for debugging
+            console.log('Start Button display style after initialization:', startButton.style.display);
         };
 
         // Listen for window resize events
