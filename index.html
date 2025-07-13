@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Tag Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for the game canvas and overall layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        canvas {
+            background-color: #e2e8f0; /* Light gray for the city ground */
+            border-radius: 1rem; /* Rounded corners for the canvas */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+            display: block;
+            max-width: 90vw; /* Max width relative to viewport */
+            max-height: 80vh; /* Max height relative to viewport */
+            width: auto; /* Allow width to adjust */
+            height: auto; /* Allow height to adjust */
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem; /* Space between elements */
+            padding: 1.5rem;
+            background-color: #ffffff; /* White background for the container */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .game-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px; /* Fully rounded pill shape */
+            font-weight: 600; /* Semi-bold */
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: none;
+            outline: none;
+        }
+        .game-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-primary {
+            background-image: linear-gradient(to right top, #6366f1, #8b5cf6); /* Purple gradient */
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #cbd5e1; /* Light gray */
+            color: #475569; /* Darker gray text */
+        }
+        .message-box {
+            background-color: #fefce8; /* Light yellow background */
+            color: #a16207; /* Dark yellow text */
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid #fde68a; /* Yellow border */
+            text-align: center;
+            font-weight: 500;
+            margin-top: 1rem;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-4">City Tag</h1>
+        <div class="flex justify-between w-full max-w-md text-xl font-semibold text-gray-700">
+            <span>Score: <span id="score">0</span></span>
+            <span>Time: <span id="time">60</span>s</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="flex gap-4 mt-4">
+            <button id="startButton" class="game-button btn-primary">Start Game</button>
+            <button id="restartButton" class="game-button btn-secondary" style="display: none;">Restart Game</button>
+        </div>
+        <div id="messageBox" class="message-box"></div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Get UI elements
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const messageBox = document.getElementById('messageBox');
+
+        // Game variables
+        let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5 };
+        let people = [];
+        let score = 0;
+        let timeLeft = 60; // seconds
+        let gameRunning = false;
+        let gameInterval; // For the timer
+        let keys = {}; // To track pressed keys for smooth movement
+
+        // Game settings
+        const numPeople = 10;
+        const personSize = 15;
+        const buildingCount = 15; // Number of buildings
+        const buildings = [];
+
+        // --- Utility Functions ---
+
+        // Function to show a message in the message box
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            // Optional: Add type-specific styling
+            if (type === 'error') {
+                messageBox.style.backgroundColor = '#fee2e2'; // Red background
+                messageBox.style.borderColor = '#fca5a5'; // Red border
+                messageBox.style.color = '#dc2626'; // Red text
+            } else if (type === 'success') {
+                messageBox.style.backgroundColor = '#d1fae5'; // Green background
+                messageBox.style.borderColor = '#34d399'; // Green border
+                messageBox.style.color = '#065f46'; // Green text
+            } else { // Default info
+                messageBox.style.backgroundColor = '#fefce8'; // Yellow background
+                messageBox.style.borderColor = '#fde68a'; // Yellow border
+                messageBox.style.color = '#a16207'; // Yellow text
+            }
+        }
+
+        // Function to hide the message box
+        function hideMessageBox() {
+            messageBox.style.display = 'none';
+        }
+
+        // Generate random buildings
+        function generateBuildings() {
+            buildings.length = 0; // Clear existing buildings
+            for (let i = 0; i < buildingCount; i++) {
+                const width = Math.random() * 100 + 50; // Random width between 50 and 150
+                const height = Math.random() * 100 + 50; // Random height between 50 and 150
+                const x = Math.random() * (canvas.width - width);
+                const y = Math.random() * (canvas.height - height);
+                buildings.push({ x, y, width, height });
+            }
+        }
+
+        // Generate a new person at a random valid location
+        function generatePerson() {
+            let newX, newY;
+            let validPosition = false;
+            // Try to find a position that doesn't overlap with buildings or player
+            while (!validPosition) {
+                newX = Math.random() * (canvas.width - personSize);
+                newY = Math.random() * (canvas.height - personSize);
+
+                let overlapsBuilding = false;
+                for (const building of buildings) {
+                    if (
+                        newX < building.x + building.width &&
+                        newX + personSize > building.x &&
+                        newY < building.y + building.height &&
+                        newY + personSize > building.y
+                    ) {
+                        overlapsBuilding = true;
+                        break;
+                    }
+                }
+
+                // Also check if it's too close to the player's initial position
+                const distToPlayer = Math.sqrt(
+                    Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
+                );
+                if (!overlapsBuilding && distToPlayer > 100) { // Ensure initial spawn is not too close
+                    validPosition = true;
+                }
+            }
+            people.push({ x: newX, y: newY, size: personSize });
+        }
+
+        // Initialize game state
+        function initializeGame() {
+            player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5 };
+            people = [];
+            score = 0;
+            timeLeft = 60;
+            gameRunning = false;
+            keys = {};
+
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = timeLeft;
+            startButton.style.display = 'block';
+            restartButton.style.display = 'none';
+            hideMessageBox();
+
+            generateBuildings(); // Generate buildings once at the start
+            for (let i = 0; i < numPeople; i++) {
+                generatePerson();
+            }
+        }
+
+        // --- Drawing Functions ---
+
+        function drawPlayer() {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#3b82f6'; // Blue player
+            ctx.fill();
+            ctx.strokeStyle = '#2563eb'; // Darker blue border
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function drawPeople() {
+            people.forEach(person => {
+                ctx.beginPath();
+                ctx.arc(person.x + person.size / 2, person.y + person.size / 2, person.size / 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; // Red people
+                ctx.fill();
+                ctx.strokeStyle = '#dc2626'; // Darker red border
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+            });
+        }
+
+        function drawBuildings() {
+            buildings.forEach(building => {
+                ctx.fillStyle = '#94a3b8'; // Gray buildings
+                ctx.fillRect(building.x, building.y, building.width, building.height);
+                ctx.strokeStyle = '#64748b'; // Darker gray border
+                ctx.lineWidth = 2;
+                ctx.strokeRect(building.x, building.y, building.width, building.height);
+            });
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBuildings();
+            drawPeople();
+            drawPlayer();
+        }
+
+        // --- Game Logic ---
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Player movement based on keys pressed
+            if (keys['ArrowUp'] || keys['w']) player.y -= player.speed;
+            if (keys['ArrowDown'] || keys['s']) player.y += player.speed;
+            if (keys['ArrowLeft'] || keys['a']) player.x -= player.speed;
+            if (keys['ArrowRight'] || keys['d']) player.x += player.speed;
+
+            // Keep player within canvas bounds
+            player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
+            player.y = Math.max(player.size / 2, Math.min(canvas.height - player.size / 2, player.y));
+
+            // Collision detection with buildings
+            for (const building of buildings) {
+                // Approximate collision for circle-rectangle
+                const closestX = Math.max(building.x, Math.min(player.x, building.x + building.width));
+                const closestY = Math.max(building.y, Math.min(player.y, building.y + building.height));
+
+                const distanceX = player.x - closestX;
+                const distanceY = player.y - closestY;
+                const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+                if (distanceSquared < (player.size / 2) * (player.size / 2)) {
+                    // Collision occurred, push player out
+                    const angle = Math.atan2(distanceY, distanceX);
+                    player.x = closestX + Math.cos(angle) * (player.size / 2);
+                    player.y = closestY + Math.sin(angle) * (player.size / 2);
+                }
+            }
+
+
+            // Collision detection with people (tagging)
+            for (let i = people.length - 1; i >= 0; i--) {
+                const person = people[i];
+                const dist = Math.sqrt(
+                    Math.pow(player.x - (person.x + person.size / 2), 2) +
+                    Math.pow(player.y - (person.y + person.size / 2), 2)
+                );
+
+                if (dist < (player.size / 2) + (person.size / 2)) {
+                    // Collision! "Tag" the person
+                    people.splice(i, 1); // Remove the tagged person
+                    score++;
+                    scoreDisplay.textContent = score;
+                    generatePerson(); // Generate a new person
+                }
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Timer function
+        function startTimer() {
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timeDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(gameInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // End game
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameInterval);
+            showMessage(`Game Over! Your final score is: ${score}`, 'info');
+            startButton.style.display = 'none';
+            restartButton.style.display = 'block';
+        }
+
+        // --- Event Listeners ---
+
+        startButton.addEventListener('click', () => {
+            if (!gameRunning) {
+                gameRunning = true;
+                startButton.style.display = 'none';
+                restartButton.style.display = 'none';
+                hideMessageBox();
+                startTimer();
+                gameLoop(); // Start the animation loop
+            }
+        });
+
+        restartButton.addEventListener('click', () => {
+            initializeGame(); // Reset all game state
+            startButton.style.display = 'block'; // Show start button again
+            restartButton.style.display = 'none';
+        });
+
+        // Keyboard input for player movement
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Handle window resize to adjust canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth - parseFloat(getComputedStyle(container).paddingLeft) * 2;
+            const containerHeight = container.clientHeight - parseFloat(getComputedStyle(container).paddingTop) * 2;
+
+            // Set canvas dimensions based on container, maintaining aspect ratio or fitting
+            // Let's make it responsive but within a reasonable max size
+            const aspectRatio = 800 / 600; // Original aspect ratio
+            let newWidth = containerWidth * 0.9; // Use 90% of container width
+            let newHeight = newWidth / aspectRatio;
+
+            if (newHeight > containerHeight * 0.8) { // If height exceeds 80% of container height
+                newHeight = containerHeight * 0.8;
+                newWidth = newHeight * aspectRatio;
+            }
+
+            canvas.width = Math.min(newWidth, 800); // Max width 800
+            canvas.height = Math.min(newHeight, 600); // Max height 600
+
+            // Re-initialize game elements if game is not running, to update positions
+            // If game is running, elements will be drawn relative to new canvas size
+            if (!gameRunning) {
+                initializeGame();
+                draw(); // Redraw static elements
+            }
+        }
+
+        // Initial setup on window load
+        window.onload = function() {
+            resizeCanvas(); // Set initial canvas size
+            initializeGame(); // Initialize game state
+            draw(); // Draw initial state
+        };
+
+        // Listen for window resize events
+        window.addEventListener('resize', resizeCanvas);
+
+    </script>
+</body>
+</html>
